@@ -54,11 +54,11 @@ func main() {
     firstStr := lid.Next("")
     fmt.Println(firstStr) // Output: "0001"
 	
-	secondStr := lid.Next(firstStr)
-	fmt.Println(secondStr) // Output: "000b"
+    secondStr := lid.Next(firstStr)
+    fmt.Println(secondStr) // Output: "000b"
 
 
-	// Generate a string before another
+    // Generate a string before another
     nextBeforeStr, err := lid.NextBefore(firstStr, secondStr)
     if err != nil {
         log.Fatalf("Error generating NextBefore string: %v", err)
