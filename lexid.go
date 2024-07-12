@@ -27,7 +27,7 @@ const (
 )
 
 // Must creates a Lexid and panics if there is an error
-func Must(chars string, blockSize, stepSize int) Lexid {
+func Must(chars string, blockSize, stepSize int) *Lexid {
 	lexid, err := New(chars, blockSize, stepSize)
 	if err != nil {
 		panic(err)
@@ -36,7 +36,7 @@ func Must(chars string, blockSize, stepSize int) Lexid {
 }
 
 // New creates a Lexid and returns an error if blockSize is 0 or invalid chars
-func New(chars string, blockSize, stepSize int) (Lexid, error) {
+func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 	if blockSize < 1 {
 		blockSize = 1
 	}
@@ -55,7 +55,7 @@ func New(chars string, blockSize, stepSize int) (Lexid, error) {
 	}
 
 	if len(uniqueChars) < 2 {
-		return Lexid{}, errors.New("chars must contain at least two unique characters")
+		return nil, errors.New("chars must contain at least two unique characters")
 	}
 
 	sort.Slice(uniqueChars, func(i, j int) bool {
@@ -81,7 +81,7 @@ func New(chars string, blockSize, stepSize int) (Lexid, error) {
 		charIndex[c] = i
 	}
 
-	return Lexid{
+	return &Lexid{
 		chars:     uniqueChars,
 		blockSize: blockSize,
 		stepSize:  stepSize,

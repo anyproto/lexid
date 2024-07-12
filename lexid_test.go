@@ -126,7 +126,7 @@ func TestLexid_Fuzzy(t *testing.T) {
 }
 
 func BenchmarkLexid_Next(b *testing.B) {
-	bench := func(b *testing.B, lid Lexid) {
+	bench := func(b *testing.B, lid *Lexid) {
 		b.ReportAllocs()
 		var prev, next string
 		for i := 0; i < b.N; i++ {
