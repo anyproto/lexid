@@ -52,10 +52,10 @@ func main() {
 
     // Generate the next string
     firstStr := lid.Next("")
-    fmt.Println(firstStr) // Output: "0001"
+    fmt.Println(firstStr) // Output: "001"
 	
     secondStr := lid.Next(firstStr)
-    fmt.Println(secondStr) // Output: "000b"
+    fmt.Println(secondStr) // Output: "00b"
 
 
     // Generate a string before another
@@ -63,10 +63,10 @@ func main() {
     if err != nil {
         log.Fatalf("Error generating NextBefore string: %v", err)
     }
-    fmt.Println(nextBeforeStr) // Output: "0003"
+    fmt.Println(nextBeforeStr) // Output: "003"
 }
 ```
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE.md) file for details.
