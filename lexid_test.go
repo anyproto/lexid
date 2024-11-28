@@ -43,6 +43,18 @@ func TestLexid_Next(t *testing.T) {
 }
 
 func TestLexid_NextBefore(t *testing.T) {
+	t.Run("empty before", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 100)
+		_, err := lid.NextBefore("001", "")
+		assert.Error(t, err)
+	})
+	t.Run("empty prev", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 10)
+		firstString := lid.Next("")
+		nextId, err := lid.NextBefore("", firstString)
+		require.NoError(t, err)
+		assert.True(t, nextId < firstString)
+	})
 	t.Run("dyn steps", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 100)
 		prev := lid.Next("001")

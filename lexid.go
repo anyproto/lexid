@@ -182,6 +182,14 @@ func (l Lexid) NextBefore(prev, before string) (string, error) {
 	if pad := l.blockSize - (len(beforePad) % l.blockSize); pad != l.blockSize {
 		beforePad = l.padding(beforePad, pad)
 	}
+	if prev == "" {
+		pad := l.blockSize * (len(beforePad) / l.blockSize)
+		prevPad = l.padding("", pad)
+		if prevPad == beforePad {
+			prevPad = l.padding("", pad+l.blockSize)
+		}
+	}
+
 	lDiff := len(prevPad) - len(beforePad)
 	if lDiff > 0 {
 		beforePad = l.padding(beforePad, lDiff)
