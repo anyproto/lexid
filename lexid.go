@@ -118,7 +118,7 @@ func (l Lexid) nextStep(prev string, step int) (next string) {
 				firstId[i] = l.lower
 			}
 		}
-		return string(firstId)
+		prev = string(firstId)
 	}
 
 	if pad := l.blockSize - (len(prev) % l.blockSize); pad != l.blockSize {
