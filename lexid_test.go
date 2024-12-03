@@ -13,7 +13,7 @@ import (
 func TestLexid_Next(t *testing.T) {
 	t.Run("first id", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 1)
-		assert.Equal(t, "001", lid.Next(""))
+		assert.Equal(t, "002", lid.Next(""))
 	})
 	t.Run("next", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 4, 100)
@@ -43,6 +43,18 @@ func TestLexid_Next(t *testing.T) {
 }
 
 func TestLexid_NextBefore(t *testing.T) {
+	t.Run("empty before", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 100)
+		_, err := lid.NextBefore("001", "")
+		assert.Error(t, err)
+	})
+	t.Run("empty prev - min before", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 10)
+		firstString := "001"
+		nextId, err := lid.NextBefore("", firstString)
+		require.NoError(t, err)
+		assert.True(t, nextId < firstString)
+	})
 	t.Run("dyn steps", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 100)
 		prev := lid.Next("001")
