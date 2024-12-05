@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 const (
@@ -127,6 +128,7 @@ func (l Lexid) nextStep(prev string, step int) (next string) {
 
 	prevBytes := []byte(prev)
 
+doSteps:
 	var carry int
 	for s := 0; s < step; s++ {
 		carry = 1
@@ -150,7 +152,9 @@ func (l Lexid) nextStep(prev string, step int) (next string) {
 		}
 	}
 	if carry == 1 {
-		return l.padding(prev, l.blockSize)
+		prev = l.padding(prev, l.blockSize)
+		prevBytes = []byte(prev)
+		goto doSteps
 	}
 
 	return string(prevBytes)
@@ -182,11 +186,15 @@ func (l Lexid) NextBefore(prev, before string) (string, error) {
 	if pad := l.blockSize - (len(beforePad) % l.blockSize); pad != l.blockSize {
 		beforePad = l.padding(beforePad, pad)
 	}
-	if prev == "" {
-		pad := l.blockSize * (len(beforePad) / l.blockSize)
-		prevPad = l.padding("", pad)
-		if prevPad == beforePad {
-			prevPad = l.padding("", pad+l.blockSize)
+	if prev == "" || strings.HasPrefix(before, prev) {
+		beforeTail := before[len(prev):]
+		// if the beforeTail is the min possible value - increase the prev padding
+		if beforeTail == l.padding("", len(beforeTail)) {
+			pad := l.blockSize * (len(beforePad) / l.blockSize)
+			prevPad = l.padding(prevPad, pad)
+			if prevPad == beforePad {
+				prevPad = l.padding("", pad+l.blockSize)
+			}
 		}
 	}
 
@@ -211,7 +219,7 @@ func (l Lexid) NextBefore(prev, before string) (string, error) {
 		}
 	}
 	next := l.addTail(prevPad)
-	if prev > next {
+	if prev > next || next > before {
 		return "", fmt.Errorf("unable to create id between '%s' and '%s'; result='%s'", prev, before, next)
 	}
 	return next, nil
