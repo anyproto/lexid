@@ -97,6 +97,16 @@ func TestLexid_NextBefore(t *testing.T) {
 		assert.Greater(t, next, middle)
 		t.Log(middle)
 	})
+	t.Run("between padding", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 100)
+		prev := "zzz"
+		next := "zzzz01"
+		middle, err := lid.NextBefore(prev, next)
+		require.NoError(t, err)
+		assert.Greater(t, middle, prev)
+		assert.Greater(t, next, middle)
+		assert.Len(t, middle, 6)
+	})
 }
 
 func TestLexid_Fuzzy(t *testing.T) {

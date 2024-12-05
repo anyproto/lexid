@@ -187,10 +187,14 @@ func (l Lexid) NextBefore(prev, before string) (string, error) {
 		beforePad = l.padding(beforePad, pad)
 	}
 	if prev == "" || strings.HasPrefix(before, prev) {
-		pad := l.blockSize * (len(beforePad) / l.blockSize)
-		prevPad = l.padding(prevPad, pad)
-		if prevPad == beforePad {
-			prevPad = l.padding("", pad+l.blockSize)
+		beforeTail := before[len(prev):]
+		// if the beforeTail is the min possible value - increase the prev padding
+		if beforeTail == l.padding("", len(beforeTail)) {
+			pad := l.blockSize * (len(beforePad) / l.blockSize)
+			prevPad = l.padding(prevPad, pad)
+			if prevPad == beforePad {
+				prevPad = l.padding("", pad+l.blockSize)
+			}
 		}
 	}
 
