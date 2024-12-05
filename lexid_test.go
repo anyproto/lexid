@@ -38,7 +38,7 @@ func TestLexid_Next(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 2)
 		assert.Equal(t, "003", lid.Next("001"))
 		assert.Equal(t, "005", lid.Next("003"))
-		assert.Equal(t, "ZZZ001", lid.Next("ZZZ"))
+		assert.Equal(t, "ZZZ003", lid.Next("ZZZ"))
 	})
 }
 
@@ -77,6 +77,25 @@ func TestLexid_NextBefore(t *testing.T) {
 		assert.Greater(t, before, next)
 		assert.Greater(t, next, prev)
 		t.Log(next)
+	})
+	t.Run("short before", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 100)
+		prev := "001"
+		before := "002001"
+		next, err := lid.NextBefore(prev, before)
+		require.NoError(t, err)
+		assert.Greater(t, before, next)
+		assert.Greater(t, next, prev)
+	})
+	t.Run("between min padding", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 100)
+		prev := "zzz"
+		next := "zzz001"
+		middle, err := lid.NextBefore(prev, next)
+		require.NoError(t, err)
+		assert.Greater(t, middle, prev)
+		assert.Greater(t, next, middle)
+		t.Log(middle)
 	})
 }
 
