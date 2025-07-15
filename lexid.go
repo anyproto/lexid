@@ -58,7 +58,7 @@ func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 	if len(uniqueChars) < 2 {
 		return nil, errors.New("chars must contain at least two unique characters")
 	}
-	
+
 	// Calculate maximum capacity for a single block
 	// This prevents stepSize from being larger than what can fit in a block
 	var maxCapacity uint64 = 1
@@ -69,7 +69,7 @@ func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 		}
 		maxCapacity *= uint64(len(uniqueChars))
 	}
-	
+
 	if uint64(stepSize) >= maxCapacity {
 		return nil, fmt.Errorf("stepSize (%d) must be less than block capacity (%d)", stepSize, maxCapacity)
 	}
@@ -305,8 +305,9 @@ func (l Lexid) prevStep(next string, step int) (prev string) {
 		}
 	}
 
-	// Process steps
-	for s := 0; s < step; s++ {
+	// Process all steps
+	remainingSteps := step
+	for remainingSteps > 0 {
 		borrow := 1
 		for i := len(nextBytes) - 1; i >= 0; i-- {
 			if borrow == 0 {
@@ -331,7 +332,7 @@ func (l Lexid) prevStep(next string, step int) (prev string) {
 			}
 			// Remove a block and continue with remaining steps
 			nextBytes = nextBytes[:len(nextBytes)-l.blockSize]
-			if s < step-1 && len(nextBytes) > 0 {
+			if remainingSteps > 1 && len(nextBytes) > 0 {
 				// Set to maximum value for the shorter length to continue stepping
 				for j := range nextBytes {
 					nextBytes[j] = l.upper
@@ -339,15 +340,31 @@ func (l Lexid) prevStep(next string, step int) (prev string) {
 			}
 		}
 
-		// Check for trailing zero after each step and handle it
+		remainingSteps--
+
+		// Check for trailing zero after each step - but only if we underflowed
+		// The idea: if we have a trailing zero AND we're at a block boundary,
+		// we've likely underflowed to a value that needs padding
 		if len(nextBytes) > 0 && nextBytes[len(nextBytes)-1] == l.lower {
-			// Add padding with maximum values to avoid trailing zero
-			padding := make([]byte, l.blockSize)
-			for i := range padding {
-				padding[i] = l.upper
+			// Check if this is a "real" underflow by seeing if we're at minimum of current length
+			isMinimumValue := true
+			for i := 0; i < len(nextBytes); i++ {
+				if nextBytes[i] != l.lower {
+					isMinimumValue = false
+					break
+				}
 			}
-			nextBytes = append(nextBytes, padding...)
-			// Continue with remaining steps on the padded result
+
+			// Only add padding if we've reached the minimum value for this length
+			if isMinimumValue {
+				// Add padding with maximum values to avoid trailing zero
+				padding := make([]byte, l.blockSize)
+				for i := range padding {
+					padding[i] = l.upper
+				}
+				nextBytes = append(nextBytes, padding...)
+				// Continue with remaining steps on the padded result
+			}
 		}
 	}
 

@@ -271,19 +271,37 @@ func TestLargeStepSize(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "stepSize (4) must be less than block capacity (4)")
 	})
-	
+
 	t.Run("stepSize at limit should work", func(t *testing.T) {
 		lid, err := New("01", 2, 3) // 3 < 4, should work
 		assert.NoError(t, err)
-		
+
 		first := lid.Next("")
 		assert.NotEmpty(t, first)
 	})
-	
+
 	t.Run("Must panics on invalid stepSize", func(t *testing.T) {
 		assert.Panics(t, func() {
 			Must("abc", 2, 9) // 3^2 = 9, so stepSize=9 should panic
 		})
+	})
+
+	t.Run("large step size with middle value", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 4, 1000)
+		current := "hhhh"
+		result := lid.Prev(current)
+
+		// With large step size, going back 1000 steps from "hhhh" should work normally
+		// since we're far from underflow (capacity is 36^4 = 1,679,616)
+		assert.NotEmpty(t, result)
+		assert.True(t, result < current, "Prev result should be less than input")
+		assert.NotEqual(t, 'a', result[len(result)-1], "Should not end with trailing zero")
+
+		// The result should be same length as input (no underflow)
+		assert.Equal(t, len(result), len(current), "Result should be same length as input")
+
+		// Should NOT contain padding blocks for normal case
+		assert.NotContains(t, result, "0zzz", "Should not contain padding blocks for normal case")
 	})
 }
 
@@ -295,7 +313,6 @@ func TestLexid_Fuzzy(t *testing.T) {
 	var biggestId string
 	printBiggest := func(id string) {
 		if len(id) > biggest {
-			t.Log(id)
 			biggestId = id
 			biggest = len(id)
 		}
@@ -310,6 +327,7 @@ func TestLexid_Fuzzy(t *testing.T) {
 		ids[i] = lid.Next(ids[i-1])
 		printBiggest(ids[i])
 	}
+	t.Log("created", len(ids), time.Since(st))
 
 	numInsertions := 1000
 	for i := 0; i < numInsertions; i++ {
@@ -332,11 +350,16 @@ func TestLexid_Fuzzy(t *testing.T) {
 
 		ids = append(ids[:pos], append(newIDs, ids[pos:]...)...)
 		numIDs += seriesLength
+		if i%1000 == 0 {
+			t.Log("inserted", seriesLength, i, time.Since(st))
+		}
 	}
 	// Verify the list is still sorted
 	for i := 1; i < len(ids); i++ {
 		assert.Greater(t, ids[i], ids[i-1], "IDs are not sorted")
 	}
+
+	t.Log("total:", len(ids), biggestId, biggest)
 }
 
 func BenchmarkLexid_Next(b *testing.B) {
