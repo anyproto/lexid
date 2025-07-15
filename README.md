@@ -50,6 +50,10 @@ func main() {
         log.Fatalf("Error creating Lexid: %v", err)
     }
 
+    // Get the middle point (useful as first ID)
+    middle := lid.Middle()
+    fmt.Println(middle) // Output: "VVV"
+
     // Generate the next string
     firstStr := lid.Next("")
     fmt.Println(firstStr) // Output: "001"
@@ -57,13 +61,16 @@ func main() {
     secondStr := lid.Next(firstStr)
     fmt.Println(secondStr) // Output: "00b"
 
-
     // Generate a string before another
     nextBeforeStr, err := lid.NextBefore(firstStr, secondStr)
     if err != nil {
         log.Fatalf("Error generating NextBefore string: %v", err)
     }
     fmt.Println(nextBeforeStr) // Output: "003"
+
+    // Generate IDs in reverse order
+    prevStr := lid.Prev(secondStr)
+    fmt.Println(prevStr) // Output: "001"
 }
 ```
 

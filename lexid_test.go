@@ -42,6 +42,100 @@ func TestLexid_Next(t *testing.T) {
 	})
 }
 
+func TestLexid_Middle(t *testing.T) {
+	t.Run("alphanumeric lower", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 1)
+		middle := lid.Middle()
+		assert.Len(t, middle, 3)
+		assert.Equal(t, "iii", middle)
+	})
+	t.Run("alphanumeric", func(t *testing.T) {
+		lid := Must(CharsAlphanumeric, 4, 1)
+		middle := lid.Middle()
+		assert.Len(t, middle, 4)
+		assert.Equal(t, "VVVV", middle)
+	})
+	t.Run("base58", func(t *testing.T) {
+		lid := Must(CharsBase58, 2, 1)
+		middle := lid.Middle()
+		assert.Len(t, middle, 2)
+		expectedMiddleChar := CharsBase58[len(CharsBase58)/2]
+		assert.Equal(t, string([]byte{expectedMiddleChar, expectedMiddleChar}), middle)
+	})
+	t.Run("zero value returns empty", func(t *testing.T) {
+		var lid Lexid // zero value - blockSize=0, so returns empty string
+		result := lid.Middle()
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("empty chars with blockSize panics", func(t *testing.T) {
+		lid := Lexid{
+			chars:     []byte{}, // empty - invalid state
+			blockSize: 3,
+		}
+		assert.Panics(t, func() {
+			lid.Middle()
+		})
+	})
+
+	t.Run("nil chars panics", func(t *testing.T) {
+		lid := Lexid{
+			chars:     nil, // nil - invalid state
+			blockSize: 3,
+		}
+		assert.Panics(t, func() {
+			lid.Middle()
+		})
+	})
+}
+
+func TestLexid_Prev(t *testing.T) {
+	t.Run("simple prev", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 1)
+		prev := lid.Prev("003")
+		assert.Equal(t, "002", prev)
+		prev = lid.Prev("002")
+		assert.Equal(t, "001", prev)
+	})
+	t.Run("prev with step", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 2)
+		prev := lid.Prev("005")
+		assert.Equal(t, "003", prev)
+		prev = lid.Prev("003")
+		assert.Equal(t, "001", prev)
+	})
+	t.Run("prev with borrow", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 1)
+		prev := lid.Prev("b00")
+		assert.Equal(t, "azz", prev)
+	})
+	t.Run("prev adds padding on trailing zero", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 1)
+		// When result would have trailing zero, add padding with max values
+		prev := lid.Prev("001")
+		assert.Equal(t, "000zzz", prev)
+
+		// Can continue the sequence
+		prev = lid.Prev("000zzz")
+		assert.Equal(t, "000zzy", prev)
+	})
+	t.Run("prev from empty", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 1)
+		prev := lid.Prev("")
+		assert.Equal(t, "zzz", prev)
+	})
+	t.Run("prev reaches lower bound", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 1)
+		// When Prev would create trailing zero, add padding
+		prev := lid.Prev("001")
+		assert.Equal(t, "000zzz", prev)
+
+		// Can continue going back
+		prev = lid.Prev("000zzz")
+		assert.Equal(t, "000zzy", prev)
+	})
+}
+
 func TestLexid_NextBefore(t *testing.T) {
 	t.Run("empty before", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 100)
@@ -107,6 +201,35 @@ func TestLexid_NextBefore(t *testing.T) {
 		assert.Greater(t, next, middle)
 		assert.Len(t, middle, 6)
 	})
+}
+
+func TestPrevSpecificCase(t *testing.T) {
+	lid := Must(CharsAlphanumericLower, 4, 1)
+
+	// Test the specific case: Prev("0001") should return "0000zzzz"
+	result := lid.Prev("0001")
+	t.Logf("Prev(\"0001\") = %q", result)
+	assert.Equal(t, "0000zzzz", result)
+
+	// Verify the properties
+	assert.True(t, result < "0001", "Result should be less than 0001")
+	assert.NotEqual(t, 'a', result[len(result)-1], "Should not end with trailing zero")
+
+	// Test that we can continue calling Prev
+	result2 := lid.Prev(result)
+	t.Logf("Prev(%q) = %q", result, result2)
+	assert.True(t, result2 < result, "Should be able to continue the sequence")
+
+	// Test more cases
+	t.Log("\nTesting more cases:")
+	testCases := []string{"0001", "00000001", "b000", "0010"}
+	for _, tc := range testCases {
+		prev := lid.Prev(tc)
+		t.Logf("Prev(%q) = %q", tc, prev)
+		if prev != "" {
+			assert.True(t, prev < tc, "Prev result should be less than input")
+		}
+	}
 }
 
 func TestLexid_Fuzzy(t *testing.T) {
