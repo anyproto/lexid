@@ -117,6 +117,7 @@ func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 //   - chars must contain at least 2 unique characters
 //   - blockSize must be at least 1
 //   - stepSize must be at least 1
+//   - stepSize must be less than block capacity (len(chars)^blockSize)
 type Lexid struct {
 	chars     []byte
 	nextChar  [256]byte
