@@ -25,7 +25,6 @@ func TestLexid_Next(t *testing.T) {
 			assert.False(t, strings.HasSuffix(next, "0"), next)
 			prev = next
 		}
-		t.Log(next)
 	})
 	t.Run("padding", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 1)
@@ -207,7 +206,6 @@ func TestLexid_NextBefore(t *testing.T) {
 		require.NoError(t, err)
 		assert.Greater(t, before, next)
 		assert.Greater(t, next, prev)
-		t.Log(next)
 	})
 	t.Run("short before", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 100)
@@ -226,7 +224,6 @@ func TestLexid_NextBefore(t *testing.T) {
 		require.NoError(t, err)
 		assert.Greater(t, middle, prev)
 		assert.Greater(t, next, middle)
-		t.Log(middle)
 	})
 	t.Run("between padding", func(t *testing.T) {
 		lid := Must(CharsAlphanumericLower, 3, 100)
@@ -265,6 +262,31 @@ func TestPrevSpecificCase(t *testing.T) {
 	}
 }
 
+func TestLargeStepSize(t *testing.T) {
+	// Test that stepSize validation works
+	// With 2 chars and blockSize=2, max capacity = 2^2 = 4 values
+	// So stepSize=4 should be rejected
+	t.Run("stepSize too large should error", func(t *testing.T) {
+		_, err := New("01", 2, 4)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "stepSize (4) must be less than block capacity (4)")
+	})
+	
+	t.Run("stepSize at limit should work", func(t *testing.T) {
+		lid, err := New("01", 2, 3) // 3 < 4, should work
+		assert.NoError(t, err)
+		
+		first := lid.Next("")
+		assert.NotEmpty(t, first)
+	})
+	
+	t.Run("Must panics on invalid stepSize", func(t *testing.T) {
+		assert.Panics(t, func() {
+			Must("abc", 2, 9) // 3^2 = 9, so stepSize=9 should panic
+		})
+	})
+}
+
 func TestLexid_Fuzzy(t *testing.T) {
 	lid := Must(CharsAllNoEscape, 4, 100)
 	rand.Seed(time.Now().UnixNano())
@@ -288,7 +310,6 @@ func TestLexid_Fuzzy(t *testing.T) {
 		ids[i] = lid.Next(ids[i-1])
 		printBiggest(ids[i])
 	}
-	t.Log("created", len(ids), time.Since(st))
 
 	numInsertions := 1000
 	for i := 0; i < numInsertions; i++ {
@@ -311,15 +332,11 @@ func TestLexid_Fuzzy(t *testing.T) {
 
 		ids = append(ids[:pos], append(newIDs, ids[pos:]...)...)
 		numIDs += seriesLength
-		if i%1000 == 0 {
-			t.Log("inserted", seriesLength, i, time.Since(st))
-		}
 	}
 	// Verify the list is still sorted
 	for i := 1; i < len(ids); i++ {
 		assert.Greater(t, ids[i], ids[i-1], "IDs are not sorted")
 	}
-	t.Log("total:", len(ids), biggestId, biggest)
 }
 
 func BenchmarkLexid_Next(b *testing.B) {

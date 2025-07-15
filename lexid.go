@@ -58,6 +58,21 @@ func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 	if len(uniqueChars) < 2 {
 		return nil, errors.New("chars must contain at least two unique characters")
 	}
+	
+	// Calculate maximum capacity for a single block
+	// This prevents stepSize from being larger than what can fit in a block
+	var maxCapacity uint64 = 1
+	for i := 0; i < blockSize; i++ {
+		if maxCapacity > (1<<64-1)/uint64(len(uniqueChars)) { // overflow check
+			maxCapacity = 1<<64 - 1
+			break
+		}
+		maxCapacity *= uint64(len(uniqueChars))
+	}
+	
+	if uint64(stepSize) >= maxCapacity {
+		return nil, fmt.Errorf("stepSize (%d) must be less than block capacity (%d)", stepSize, maxCapacity)
+	}
 
 	sort.Slice(uniqueChars, func(i, j int) bool {
 		return uniqueChars[i] < uniqueChars[j]
