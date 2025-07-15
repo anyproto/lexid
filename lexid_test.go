@@ -134,6 +134,49 @@ func TestLexid_Prev(t *testing.T) {
 		prev = lid.Prev("000zzz")
 		assert.Equal(t, "000zzy", prev)
 	})
+
+	t.Run("prev with large step overflows bottom", func(t *testing.T) {
+		lid := Must(CharsAlphanumericLower, 3, 5)
+
+		// Going back 5 steps from "005": 005->004->003->002->001->000
+		// Since "000" ends with trailing zero, it adds padding
+		prev := lid.Prev("005")
+		assert.Equal(t, "000zzz", prev)
+		t.Logf("Prev(\"005\") = %q", prev)
+
+		// Going back 5 steps from "004": 004->003->002->001->000->add padding->continue 1 step
+		// "000" -> "000zzz" -> "000zzy" 
+		prev = lid.Prev("004")
+		assert.Equal(t, "000zzy", prev)
+		t.Logf("Prev(\"004\") = %q", prev)
+
+		// Test with longer string - should remove a block when overflowing
+		prev = lid.Prev("000005")
+		t.Logf("Prev(\"000005\") = %q", prev)
+		// 000005 going back 5 steps -> 000000, which ends with trailing zero
+		// So it adds padding: 000000zzz
+		assert.Equal(t, "000000zzz", prev)
+
+		// Test case with longer string and more steps
+		prev = lid.Prev("000004")
+		t.Logf("Prev(\"000004\") = %q", prev)
+		// 000004 going back 5 steps -> 000000 -> add padding -> continue 1 step
+		assert.Equal(t, "000000zzy", prev)
+
+		// Edge case: step=5 from minimum 3-char ID 
+		prev = lid.Prev("001")
+		t.Logf("Prev(\"001\") with step=5 = %q", prev)
+		// 001 going back 1 step -> 000 -> add padding -> continue 4 steps
+		assert.Equal(t, "000zzv", prev)
+
+		// Test with even larger step
+		lid10 := Must(CharsAlphanumericLower, 4, 10)
+		prev = lid10.Prev("0005")
+		t.Logf("Prev(\"0005\") with step=10 = %q", prev)
+		// 0005 going back 10 steps: 0005->0004->0003->0002->0001->0000->underflow
+		// Since result would be "0000" + negative offset, it underflows and adds padding
+		assert.Equal(t, "0000zzzu", prev)
+	})
 }
 
 func TestLexid_NextBefore(t *testing.T) {

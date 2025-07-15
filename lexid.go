@@ -323,17 +323,16 @@ func (l Lexid) prevStep(next string, step int) (prev string) {
 			}
 		}
 
-	}
-
-	// Final check for trailing zero
-	if len(nextBytes) > 0 && nextBytes[len(nextBytes)-1] == l.lower {
-		// Instead of removing blocks, we ADD a block with maximum values
-		// This ensures the result is still less than the input but doesn't end with trailing zero
-		padding := make([]byte, l.blockSize)
-		for i := range padding {
-			padding[i] = l.upper
+		// Check for trailing zero after each step and handle it
+		if len(nextBytes) > 0 && nextBytes[len(nextBytes)-1] == l.lower {
+			// Add padding with maximum values to avoid trailing zero
+			padding := make([]byte, l.blockSize)
+			for i := range padding {
+				padding[i] = l.upper
+			}
+			nextBytes = append(nextBytes, padding...)
+			// Continue with remaining steps on the padded result
 		}
-		nextBytes = append(nextBytes, padding...)
 	}
 
 	return string(nextBytes)
