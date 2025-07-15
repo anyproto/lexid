@@ -58,6 +58,21 @@ func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 	if len(uniqueChars) < 2 {
 		return nil, errors.New("chars must contain at least two unique characters")
 	}
+	
+	// Calculate maximum capacity for a single block
+	// This prevents stepSize from being larger than what can fit in a block
+	var maxCapacity uint64 = 1
+	for i := 0; i < blockSize; i++ {
+		if maxCapacity > (1<<64-1)/uint64(len(uniqueChars)) { // overflow check
+			maxCapacity = 1<<64 - 1
+			break
+		}
+		maxCapacity *= uint64(len(uniqueChars))
+	}
+	
+	if uint64(stepSize) >= maxCapacity {
+		return nil, fmt.Errorf("stepSize (%d) must be less than block capacity (%d)", stepSize, maxCapacity)
+	}
 
 	sort.Slice(uniqueChars, func(i, j int) bool {
 		return uniqueChars[i] < uniqueChars[j]
@@ -93,7 +108,16 @@ func New(chars string, blockSize, stepSize int) (*Lexid, error) {
 	}, nil
 }
 
-// Lexid represents a lexicographically sorted ID generator
+// Lexid represents a lexicographically sorted ID generator.
+//
+// A Lexid must be created using New() or Must() to ensure proper initialization.
+// The zero value is not valid for use and will cause panics or incorrect behavior.
+//
+// Invariants:
+//   - chars must contain at least 2 unique characters
+//   - blockSize must be at least 1
+//   - stepSize must be at least 1
+//   - stepSize must be less than block capacity (len(chars)^blockSize)
 type Lexid struct {
 	chars     []byte
 	nextChar  [256]byte
@@ -246,4 +270,86 @@ func (l Lexid) addTail(prev string) string {
 	prevBytes := []byte(prev)
 	prevBytes = append(prevBytes, l.chars[middle])
 	return l.padding(string(prevBytes), l.blockSize-1)
+}
+
+// Middle returns the middle point string that can be used as the first ID
+func (l Lexid) Middle() string {
+	middle := len(l.chars) / 2
+	result := make([]byte, l.blockSize)
+	for i := range result {
+		result[i] = l.chars[middle]
+	}
+	return string(result)
+}
+
+// Prev generates the previous lexicographically sorted string ID
+func (l Lexid) Prev(next string) (prev string) {
+	return l.prevStep(next, l.stepSize)
+}
+
+func (l Lexid) prevStep(next string, step int) (prev string) {
+	if next == "" {
+		lastId := make([]byte, l.blockSize)
+		for i := range lastId {
+			lastId[i] = l.upper
+		}
+		return string(lastId)
+	}
+
+	nextBytes := []byte(next)
+
+	// Validate all characters first
+	for _, b := range nextBytes {
+		if l.charIndex[b] == -1 {
+			return ""
+		}
+	}
+
+	// Process steps
+	for s := 0; s < step; s++ {
+		borrow := 1
+		for i := len(nextBytes) - 1; i >= 0; i-- {
+			if borrow == 0 {
+				break
+			}
+			charIdx := l.charIndex[nextBytes[i]]
+
+			newIdx := charIdx - 1
+			if newIdx < 0 {
+				newIdx = len(l.chars) - 1
+				borrow = 1
+			} else {
+				borrow = 0
+			}
+			nextBytes[i] = l.chars[newIdx]
+		}
+
+		if borrow != 0 {
+			// All positions underflowed, we've gone below the minimum for this length
+			if len(nextBytes) <= l.blockSize {
+				return ""
+			}
+			// Remove a block and continue with remaining steps
+			nextBytes = nextBytes[:len(nextBytes)-l.blockSize]
+			if s < step-1 && len(nextBytes) > 0 {
+				// Set to maximum value for the shorter length to continue stepping
+				for j := range nextBytes {
+					nextBytes[j] = l.upper
+				}
+			}
+		}
+
+		// Check for trailing zero after each step and handle it
+		if len(nextBytes) > 0 && nextBytes[len(nextBytes)-1] == l.lower {
+			// Add padding with maximum values to avoid trailing zero
+			padding := make([]byte, l.blockSize)
+			for i := range padding {
+				padding[i] = l.upper
+			}
+			nextBytes = append(nextBytes, padding...)
+			// Continue with remaining steps on the padded result
+		}
+	}
+
+	return string(nextBytes)
 }
